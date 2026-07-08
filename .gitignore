@@ -1,0 +1,10 @@
+# 搜尋索引（隨時可用 scripts/wiki_search.py index 重建）
+.wiki-index.db
+
+# Obsidian 個人工作區設定（vault 設定屬個人偏好，不進版控）
+.obsidian/workspace*.json
+.obsidian/cache
+
+# 一般雜項
+.DS_Store
+__pycache__/
