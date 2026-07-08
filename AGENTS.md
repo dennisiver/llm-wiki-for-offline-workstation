@@ -19,7 +19,7 @@
 Codex CLI 的設定檔在 `~/.codex/config.toml`（全域，不在 repo 內）。指向本地 Ollama 的範例：
 
 ```toml
-model = "qwen2.5:14b"
+model = "qwen3.6:27b"
 model_provider = "ollama"
 
 [model_providers.ollama]

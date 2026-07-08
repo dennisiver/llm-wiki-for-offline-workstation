@@ -56,7 +56,7 @@
 | 硬體 | 模型建議 | 備註 |
 |------|----------|------|
 | 8–12 GB VRAM | Qwen 2.5 7B / Llama 3.1 8B（Q4 量化） | 可勝任 ingest 與 query，複雜綜合品質有限 |
-| 16–24 GB VRAM | Qwen 2.5 14B–32B（Q4–Q5） | 甜蜜點：長文 ingest、跨頁綜合都穩定 |
+| 16–24 GB VRAM | Qwen3.6 27B、Qwen 2.5 14B–32B（Q4–Q5） | 甜蜜點：長文 ingest、跨頁綜合都穩定（本 repo 預設 Qwen3.6 27B） |
 | 48 GB+ / 多卡 | Llama 3.3 70B、Qwen 2.5 72B | 接近雲端模型的維護品質 |
 
 關鍵需求是**長上下文**（ingest 一份來源 + 讀 10 幾個相關頁面），建議 runtime 設定至少 32K context。

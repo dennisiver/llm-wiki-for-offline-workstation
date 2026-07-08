@@ -70,7 +70,7 @@ llm-wiki-for-offline-workstation/
 
 ```bash
 # 1. 準備本地 LLM（一次性，需在有網路時完成）
-ollama pull qwen2.5:14b        # 或其他適合你硬體的模型
+ollama pull qwen3.6:27b        # 或其他適合你硬體的模型
 
 # 2. 放入第一份來源
 cp ~/some-article.md sources/inbox/
