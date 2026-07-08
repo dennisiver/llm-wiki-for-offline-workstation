@@ -25,7 +25,9 @@
 
 ```
 llm-wiki-for-offline-workstation/
-├── CLAUDE.md              # Schema：wiki 維護規則（LLM 的操作手冊）
+├── CLAUDE.md              # Schema：wiki 維護規則（唯一規範來源；Claude Code 自動載入）
+├── AGENTS.md              # Codex CLI / OpenCode 的入口，指向 CLAUDE.md
+├── opencode.json          # OpenCode 設定：載入 CLAUDE.md 為規則 + 本地 Ollama provider
 ├── sources/               # 第 1 層：原始來源（唯讀，LLM 絕不修改）
 │   ├── inbox/             #   新來源先放這裡，等待 ingest
 │   └── archive/           #   已 ingest 的來源
@@ -56,7 +58,7 @@ llm-wiki-for-offline-workstation/
 
 相對於原始 gist（假設使用雲端 Claude），本架構做了以下調整，讓整套系統**零網路依賴**：
 
-1. **本地 LLM 執行環境** — 使用 Ollama / llama.cpp 跑本地模型（如 Qwen 2.5、Llama 3.x），模型檔預先下載後可完全離線推論。
+1. **本地 LLM 執行環境** — 使用 Ollama / llama.cpp 跑本地模型（如 Qwen 2.5、Llama 3.x），模型檔預先下載後可完全離線推論。Agent CLI 支援三種：**Claude Code**（讀 `CLAUDE.md`）、**Codex CLI** 與 **OpenCode**（讀 `AGENTS.md`；OpenCode 另由 `opencode.json` 直接載入 `CLAUDE.md` 並指向本地 Ollama）。規則只有 `CLAUDE.md` 一份，不會漂移。
 2. **離線搜尋** — `scripts/wiki_search.py` 用 SQLite FTS5 做全文檢索，只依賴 Python 標準函式庫，不需 pip、不需向量資料庫、不需 embedding API。頁數少時 LLM 直接讀 `index.md` + ripgrep 即可。
 3. **來源蒐集分離** — 在有網路的機器上用 Obsidian Web Clipper 等工具把網頁轉成 Markdown（圖片下載到本地），透過 USB / 內網同步進離線工作站的 `sources/inbox/`。
 4. **Git 版本控制** — 整個 wiki 是純文字檔，用本地 git 追蹤每次 ingest 與 lint 的變更，可隨時回溯 LLM 的每一次修改。

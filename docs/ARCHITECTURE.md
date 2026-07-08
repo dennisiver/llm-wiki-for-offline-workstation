@@ -63,12 +63,18 @@
 
 ### 2.2 Agent CLI（LLM 的手腳）
 
-llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。可行選項：
+llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 repo 對三種 agent CLI 開箱即用：
 
-- 任何支援自訂 OpenAI 相容 endpoint 的 agent 工具（指向本地 Ollama），例如 Aider、OpenHands、或開源的 coding agent CLI。
+| Agent CLI | 規則檔載入方式 | 本地模型設定 |
+|-----------|----------------|--------------|
+| **Claude Code** | 自動讀 repo 根目錄的 `CLAUDE.md` | 需要 Anthropic API（非完全離線；適合間歇連線的工作站） |
+| **Codex CLI** | 自動讀 `AGENTS.md`（其中要求先讀 `CLAUDE.md`） | `~/.codex/config.toml` 指向本地 Ollama（範例見 `AGENTS.md`） |
+| **OpenCode** | `opencode.json` 的 `instructions` 直接載入 `CLAUDE.md` | `opencode.json` 已內建本地 Ollama provider，改 `model` 欄位即可 |
+
+規則的唯一規範來源是 `CLAUDE.md`；`AGENTS.md` 只是入口與摘要，避免多份規則漂移。完全 air-gapped 環境建議用 Codex CLI 或 OpenCode 搭配 Ollama。其他選項：
+
+- 任何支援自訂 OpenAI 相容 endpoint 的 agent 工具（Aider、OpenHands 等），把 `CLAUDE.md` 貼入 system prompt。
 - 最低限度方案：自寫一個簡單的 agent loop（讀檔 / 寫檔 / 搜尋三個 tool），對 llm-wiki 的操作模式已經足夠。
-
-Agent 啟動時自動載入 `CLAUDE.md` 作為系統規則（多數工具原生支援此慣例，或手動貼入 system prompt）。
 
 ### 2.3 搜尋層
 
