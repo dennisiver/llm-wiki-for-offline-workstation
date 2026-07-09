@@ -5,6 +5,17 @@
 .obsidian/workspace*.json
 .obsidian/cache
 
+# 模擬產物（verif/sim/ 只進版控 run_*.sh）
+verif/sim/simv*
+verif/sim/work/
+verif/sim/*.log
+verif/sim/csrc/
+verif/sim/xcelium.d/
+*.vcd
+*.fsdb
+*.wlf
+ucli.key
+
 # 一般雜項
 .DS_Store
 __pycache__/

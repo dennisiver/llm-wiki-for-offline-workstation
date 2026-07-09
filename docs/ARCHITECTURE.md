@@ -2,6 +2,8 @@
 
 本文件說明如何在**無網路（air-gapped）或間歇性連線**的工作站上，運行 Karpathy llm-wiki 模式的完整系統設計。
 
+在此基礎上的硬體設計流程（spec → 需求頁 → 設計頁 → Verilog-2001 RTL）見 [SPEC-TO-RTL-FLOW.md](SPEC-TO-RTL-FLOW.md)。
+
 ## 1. 設計目標
 
 | 目標 | 對應設計 |
@@ -97,7 +99,7 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
 連網蒐集機                          離線工作站
 ─────────────                      ─────────────
 網頁 → Web Clipper → .md ─┐
-論文 → PDF/轉 md ─────────┼─→ USB/內網 ─→ sources/inbox/ ─→ [ingest] ─→ sources/archive/
+論文 PDF → 轉 .md（必做）──┼─→ USB/內網 ─→ sources/inbox/ ─→ [ingest] ─→ sources/archive/
 會議記錄、日誌 → .md ─────┘                                     │
                                                                ▼
                                                         wiki/pages/*.md 更新
@@ -107,6 +109,7 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
 
 要點：
 - 在連網機就完成「網頁 → Markdown、圖片本地化」，離線機永遠不需要網路。
+- **PDF 也在連網機轉好**：離線工作站預設沒有 PDF 轉文字工具（見 §3.4）。文字型 PDF 用 `pdftotext`（poppler）或 PyMuPDF；掃描檔需要 OCR，用 MinerU / marker 這類工具。原始 PDF 可隨轉出的 .md 一起帶入存檔，但 ingest 與全文搜尋的對象是 .md。
 - 純離線來源（自己寫的筆記、儀器輸出、內部文件）直接放 `sources/inbox/`。
 - 模型檔（GGUF 等）也走同一條 USB 通道，一次性搬入。
 
@@ -128,12 +131,62 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
                                      使用者帶著缺口清單去連網機蒐集 → 回到 3.1
 ```
 
+### 3.4 離線機上的 PDF 處理（備援方案）
+
+離線工作站**預設沒有任何 PDF 轉文字程式**，所以首選永遠是 §3.1：在連網機轉好再帶入。但如果 PDF 已經在離線機上、短期回不了連網機，備援做法是把 PyMuPDF 的 wheel 檔經 USB 帶入離線安裝：
+
+```bash
+# 連網機（一次性）：下載對應離線機 Python 版本與平台的 wheel
+pip download pymupdf -d pymupdf-wheels/
+# → pymupdf-wheels/ 整個資料夾複製到 USB
+
+# 離線機：不碰網路直接安裝
+pip install --no-index --find-links pymupdf-wheels/ pymupdf
+
+# 之後即可用 repo 附的腳本轉換
+python3 scripts/pdf_to_md.py sources/inbox/some-paper.pdf
+```
+
+限制與注意：
+- PyMuPDF 只能抽**文字型 PDF**（含中文/CJK）。**掃描檔（圖片型）抽不出字**，需要 OCR——OCR 工具鏈太重，不建議搬進離線機，掃描檔一律回連網機處理。
+- `scripts/pdf_to_md.py` 在未安裝 PyMuPDF 時會直接印出上述離線安裝指引，不會默默失敗。
+- LLM 遇到 inbox 裡讀不了的 PDF 時，依 CLAUDE.md 規則列入「資料缺口」，不憑檔名猜內容。
+
 ## 4. 版本控制策略
 
 - 整個 repo 一個 git 倉庫；`sources/` 與 `wiki/` 一起版控，保證任何 commit 的 wiki 狀態與其依據的來源一致。
 - LLM 的每次操作 = 一個 commit（`ingest: …` / `note: …` / `lint: …`），`git log` 就是 `log.md` 的機器可驗證版。
 - 搜尋索引 `.db` 不進版控（見 `.gitignore`），隨時可重建。
 - 備份 = `git clone` 到第二顆硬碟，或 `git bundle` 一個檔案帶走。
+
+### 4.1 離線更新框架（git bundle 經 USB）
+
+工作站不能 `git pull`，框架更新（CLAUDE.md 規則、scripts、docs）用 bundle 走 USB 通道，merge 交給工作站的 AI 執行。
+
+**連網機**（打包最新版）：
+
+```bash
+git clone https://github.com/dennisiver/llm-wiki-for-offline-workstation.git
+cd llm-wiki-for-offline-workstation
+git bundle create llm-wiki-$(date +%Y%m%d).bundle --all
+# 把 .bundle 複製到 USB
+```
+
+**工作站**（在 repo 目錄，先驗證再交給 AI）：
+
+```bash
+git bundle verify /path/to/usb/llm-wiki-YYYYMMDD.bundle   # 確認 bundle 完整
+```
+
+然後對工作站的 agent（OpenCode）下指令，範本：
+
+> USB 上有框架更新：`/path/to/usb/llm-wiki-YYYYMMDD.bundle`。請：
+> 1. `git fetch <bundle路徑> <分支名>` 然後 merge FETCH_HEAD 進目前分支。
+> 2. 衝突處理原則：`sources/` 一律保留本地（鐵律：不可變）；`wiki/log.md` 兩邊聯集（append-only，已設 merge=union）；`wiki/index.md` 重新整併成涵蓋兩邊頁面的目錄；框架檔（CLAUDE.md、scripts/、docs/）以更新版為準，但若我本地改過要先列出差異給我裁決。
+> 3. merge 完成後執行 `python3 scripts/wiki_search.py index` 重建索引；若有 `scripts/trace_check.py` 則跑 `check`。
+> 4. 讀一遍新版 CLAUDE.md，摘要有哪些新規則/新操作給我。
+
+**更新的邊界**：bundle 只該帶框架與（初次）範例；工作站本地產生的 wiki 內容、RTL 專案永遠不會被更新覆蓋——它們只存在工作站的 commit 裡。反向（工作站 → 連網機）如需備份，同樣用 `git bundle create` 從工作站打包帶出。
 
 ## 5. 失效模式與對策（承襲 gist 社群經驗）
 
@@ -159,6 +212,7 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
 - [ ] 下載 LLM runtime 安裝檔 + 模型檔（GGUF），USB 搬入離線機
 - [ ] 下載 agent CLI 與（可選）Obsidian 安裝檔
 - [ ] 確認離線機有 Python 3.8+（`wiki_search.py` 只用標準函式庫）與 git
+- [ ] （可選）`pip download pymupdf -d pymupdf-wheels/` 帶入離線機備用，作為離線 PDF 轉文字的備援（§3.4）；主要流程仍是在連網機轉好 .md
 
 日常循環（完全離線）：
 
