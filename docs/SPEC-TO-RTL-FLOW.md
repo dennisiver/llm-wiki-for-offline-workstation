@@ -36,7 +36,17 @@ rtl/*.v + verif/tb_*.v            產物（可由設計頁重生）
 | 「rtl uart_tx」 | 設計頁 → `rtl/uart_tx.v`，更新 filelist | `rtl: …` |
 | 「verify uart-lite」 | 產自檢 testbench + 模擬 script | `verify: …` |
 | 「lint」 | 一般健檢 + `trace_check.py` 追溯檢查 | `lint: …` |
+| 「flow uart-lite」 | 半自動：design → rtl → verify 一口氣串完（見下） | 各階段照常 |
 | （貼上模擬失敗 log） | 判斷是設計頁錯還是實作錯，從對的層級修起 | 視情況 |
+
+### 半自動模式（flow <block>）
+
+需求單純、不想逐階段下指令時，用 `flow <block>` 串接 Design → RTL-Gen → Verify。與逐步執行的差別只有「不用每階段等你下指令」，紀律不變：
+
+- **Spec-Ingest 永遠不在 flow 裡**——spec 解讀必須人審後才有需求頁，flow 從需求頁起跑。
+- **啟動 gate**：需求頁有未清的 `⚠️ 待釐清` / `🔶` 就不啟動，先請你裁決。歧義不許自動流過。
+- **每階段照常各自 commit**，git 歷史與手動逐步完全相同；中途卡住（需求資訊不足、追溯缺口）就停在該階段報告，已完成的 commit 保留。
+- **大型 block 一次只 flow 一個子系統**；模擬仍由你執行——flow 結束時的產出是「等待模擬的完整 RTL + TB」，不是「已驗證的設計」。
 
 關鍵紀律（LLM 被 CLAUDE.md 約束，人也要配合）：
 
