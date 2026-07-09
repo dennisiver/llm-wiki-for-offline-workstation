@@ -2,6 +2,8 @@
 
 本文件說明如何在**無網路（air-gapped）或間歇性連線**的工作站上，運行 Karpathy llm-wiki 模式的完整系統設計。
 
+在此基礎上的硬體設計流程（spec → 需求頁 → 設計頁 → Verilog-2001 RTL）見 [SPEC-TO-RTL-FLOW.md](SPEC-TO-RTL-FLOW.md)。
+
 ## 1. 設計目標
 
 | 目標 | 對應設計 |

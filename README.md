@@ -38,10 +38,17 @@ llm-wiki-for-offline-workstation/
 │       ├── concepts/      #     概念頁
 │       ├── entities/      #     實體頁（人、專案、工具…）
 │       └── notes/         #     查詢產出、比較、綜合分析
+│       ├── specs/         #     硬體需求頁（spec 編譯成編號需求）
+│       └── design/        #     硬體設計頁（RTL 生成契約）
+├── rtl/                   # 產物層：Verilog-2001 RTL（自設計頁生成，可重生）
+├── verif/                 # 產物層：testbench、filelist、商用模擬器 run scripts
 ├── scripts/
-│   └── wiki_search.py     # 離線搜尋：SQLite FTS5（純 Python 標準函式庫）
+│   ├── wiki_search.py     # 離線搜尋：SQLite FTS5（純 Python 標準函式庫）
+│   ├── pdf_to_md.py       # PDF 轉 Markdown 備援（PyMuPDF，可離線安裝）
+│   └── trace_check.py     # Spec-to-RTL 追溯健檢與追溯矩陣產生
 └── docs/
-    └── ARCHITECTURE.md    # 離線工作站的完整架構設計
+    ├── ARCHITECTURE.md    # 離線工作站的完整架構設計
+    └── SPEC-TO-RTL-FLOW.md# spec → 需求頁 → 設計頁 → RTL 的硬體設計流程
 ```
 
 ## 三個核心操作
@@ -53,6 +60,10 @@ llm-wiki-for-offline-workstation/
 | **Lint** | 定期健檢：找出矛盾、過時主張、孤兒頁面、缺漏的交叉連結 |
 
 詳細流程規範在 [CLAUDE.md](CLAUDE.md)。
+
+## Spec-to-RTL Flow（硬體設計）
+
+在三個核心操作之上，本 repo 內建一條硬體設計流程：spec 文件 → 編號需求頁 → 模組設計頁 → Verilog-2001 RTL + 自檢 testbench，全程可追溯（`scripts/trace_check.py` 機械化檢查 REQ ↔ 設計頁 ↔ RTL ↔ TB）。RTL 只從設計頁生成、絕不直接讀 spec——wiki 是 spec 與 RTL 之間的編譯層。附完整範例 uart-lite（已用模擬驗證 PASS）。詳見 [docs/SPEC-TO-RTL-FLOW.md](docs/SPEC-TO-RTL-FLOW.md)。
 
 ## 離線工作站的關鍵調整
 
