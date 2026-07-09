@@ -102,3 +102,32 @@ repo 內附一條走完整 flow 的範例（8N1 UART，可程式 baud divisor，
 | 追溯 | `wiki/pages/notes/traceability-matrix.md` |
 
 `wiki/log.md` 裡有這條範例每個階段的紀錄，就是日後真實專案的 log 長相。
+
+## 7. 大型 design 的分解（以 MIPI CSI-2 RX 為例）
+
+uart-lite 是單層分解（一張架構頁、兩張模組頁）；CSI-2 這種量級套用 [CLAUDE.md](../CLAUDE.md)「大型 block 的分解規則」，wiki 會長成兩層：
+
+```
+specs/
+├── csi2-dphy-requirements.md      REQ-DPHY-*   （PPI 介面、lane 對齊）
+├── csi2-packet-requirements.md    REQ-PKT-*    （header/ECC/CRC/VC）
+└── csi2-pixel-requirements.md     REQ-PIXEL-*  （解包、line/frame timing）
+
+design/
+├── csi2-rx-architecture.md            頂層：只分解到三個子系統 + CDC
+├── csi2-rx-interfaces.md              介面唯一權威（IF-PKT-STREAM、IF-PIXEL-BUS…）
+├── csi2-lane-layer-architecture.md    子系統架構頁
+│   ├── ppi-if.md / lane-deskew.md / lane-merger.md
+├── csi2-packet-layer-architecture.md
+│   ├── pkt-parser.md / payload-crc.md / vc-demux.md
+└── csi2-pixel-layer-architecture.md
+    ├── pixel-unpack.md / frame-fsm.md / cdc-fifo.md
+```
+
+流程上的差異：
+
+- **RTL-Gen 的輸入多一項**：該模組設計頁 + 所屬子系統架構頁的接線章節 + 介面定義頁中用到的介面。context 仍然有界——不管 design 多大，單次生成讀的都是這三小份。
+- **Verify 分三層**：模組 TB（例：`tb_pkt_parser` 注入 ECC 單/雙位元錯誤）→ 子系統 TB（packet layer 餵合成 packet 流）→ top 整合 TB（全鏈路影像 frame）。
+- **下指令的粒度不變**：`design csi2-packet-layer`、`rtl pkt_parser`——一次一個子系統/模組，每層產物審過再往下，與小 design 完全相同的節奏。
+
+介面定義頁是這個量級的關鍵新元素：模組 A 的輸出與模組 B 的輸入若各寫各的，RTL 生成時兩邊不一致要到子系統模擬才炸出來；集中定義後，設計頁只引用介面名，`trace_check.py` 之外人工 review 也只需要看一頁。

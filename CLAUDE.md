@@ -112,11 +112,20 @@ status: ok | needs-review   # spec 改版波及時被標為 needs-review
 4. **每條非 deprecated 的需求必須出現在至少一張設計頁的 `implements` 裡**（lint 檢查項）。
 5. commit 訊息：`design: <block 或 module>`。
 
+### 大型 block 的分解規則（模組數 > ~5 或需求數 > ~30 時適用）
+
+UART 量級用上面的規則就夠；CSI-2、PCIe 這種量級**必須**加上以下四條：
+
+1. **需求分域**：spec 按功能域拆成多張需求頁，各用獨立 REQ 前綴（例：`specs/csi2-dphy-requirements.md` 用 `REQ-DPHY-NNN`、`specs/csi2-packet-requirements.md` 用 `REQ-PKT-NNN`）。`trace_check.py` 掃整個 `specs/`，天然支援多前綴。
+2. **介面定義頁**：模組間的內部介面（訊號、位寬、握手時序）集中定義在 `design/<block>-interfaces.md`，是**唯一權威**——各模組設計頁的 ports 表引用介面名（例「符合 `IF-PKT-STREAM`」），不得各自重複定義訊號級細節。兩端設計頁對介面認知不一致是大 design 最貴的錯誤，用單一權威消滅它。
+3. **遞迴架構頁**：頂層架構頁只分解到子系統；每個子系統視為一個 block，有自己的架構頁再分解到模組（例：`csi2-rx-architecture.md` → `csi2-packet-layer-architecture.md` → `design/pkt-parser.md`）。任何一張架構頁的直接子節點不超過 ~7 個。
+4. **分層 verify**：每個模組自己的 TB（含錯誤注入）→ 子系統 TB → top 整合 TB，各自進 `verif/` 並列入設計頁 `tb:`。不要指望一個 top TB 打死所有模組 bug。
+
 ### 操作 3：RTL-Gen（產生 RTL）
 
 觸發：設計頁就緒後，使用者說「rtl <module>」。
 
-1. **只讀該模組的設計頁**（與架構頁的接線章節）產生 `rtl/<module>.v`。
+1. **只讀該模組的設計頁**（加上架構頁的接線章節；大型 block 再加介面定義頁中該模組用到的介面）產生 `rtl/<module>.v`。
 2. 檔頭註解固定格式，回鏈設計頁與需求：
 
 ```verilog
