@@ -159,6 +159,35 @@ python3 scripts/pdf_to_md.py sources/inbox/some-paper.pdf
 - 搜尋索引 `.db` 不進版控（見 `.gitignore`），隨時可重建。
 - 備份 = `git clone` 到第二顆硬碟，或 `git bundle` 一個檔案帶走。
 
+### 4.1 離線更新框架（git bundle 經 USB）
+
+工作站不能 `git pull`，框架更新（CLAUDE.md 規則、scripts、docs）用 bundle 走 USB 通道，merge 交給工作站的 AI 執行。
+
+**連網機**（打包最新版）：
+
+```bash
+git clone https://github.com/dennisiver/llm-wiki-for-offline-workstation.git
+cd llm-wiki-for-offline-workstation
+git bundle create llm-wiki-$(date +%Y%m%d).bundle --all
+# 把 .bundle 複製到 USB
+```
+
+**工作站**（在 repo 目錄，先驗證再交給 AI）：
+
+```bash
+git bundle verify /path/to/usb/llm-wiki-YYYYMMDD.bundle   # 確認 bundle 完整
+```
+
+然後對工作站的 agent（OpenCode）下指令，範本：
+
+> USB 上有框架更新：`/path/to/usb/llm-wiki-YYYYMMDD.bundle`。請：
+> 1. `git fetch <bundle路徑> <分支名>` 然後 merge FETCH_HEAD 進目前分支。
+> 2. 衝突處理原則：`sources/` 一律保留本地（鐵律：不可變）；`wiki/log.md` 兩邊聯集（append-only，已設 merge=union）；`wiki/index.md` 重新整併成涵蓋兩邊頁面的目錄；框架檔（CLAUDE.md、scripts/、docs/）以更新版為準，但若我本地改過要先列出差異給我裁決。
+> 3. merge 完成後執行 `python3 scripts/wiki_search.py index` 重建索引；若有 `scripts/trace_check.py` 則跑 `check`。
+> 4. 讀一遍新版 CLAUDE.md，摘要有哪些新規則/新操作給我。
+
+**更新的邊界**：bundle 只該帶框架與（初次）範例；工作站本地產生的 wiki 內容、RTL 專案永遠不會被更新覆蓋——它們只存在工作站的 commit 裡。反向（工作站 → 連網機）如需備份，同樣用 `git bundle create` 從工作站打包帶出。
+
 ## 5. 失效模式與對策（承襲 gist 社群經驗）
 
 | 失效模式 | 症狀 | 對策 |
