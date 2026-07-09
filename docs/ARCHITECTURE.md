@@ -97,7 +97,7 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
 連網蒐集機                          離線工作站
 ─────────────                      ─────────────
 網頁 → Web Clipper → .md ─┐
-論文 → PDF/轉 md ─────────┼─→ USB/內網 ─→ sources/inbox/ ─→ [ingest] ─→ sources/archive/
+論文 PDF → 轉 .md（必做）──┼─→ USB/內網 ─→ sources/inbox/ ─→ [ingest] ─→ sources/archive/
 會議記錄、日誌 → .md ─────┘                                     │
                                                                ▼
                                                         wiki/pages/*.md 更新
@@ -107,6 +107,7 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
 
 要點：
 - 在連網機就完成「網頁 → Markdown、圖片本地化」，離線機永遠不需要網路。
+- **PDF 也在連網機轉好**：離線工作站預設沒有 PDF 轉文字工具（見 §3.4）。文字型 PDF 用 `pdftotext`（poppler）或 PyMuPDF；掃描檔需要 OCR，用 MinerU / marker 這類工具。原始 PDF 可隨轉出的 .md 一起帶入存檔，但 ingest 與全文搜尋的對象是 .md。
 - 純離線來源（自己寫的筆記、儀器輸出、內部文件）直接放 `sources/inbox/`。
 - 模型檔（GGUF 等）也走同一條 USB 通道，一次性搬入。
 
@@ -127,6 +128,27 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
                                                     ▼
                                      使用者帶著缺口清單去連網機蒐集 → 回到 3.1
 ```
+
+### 3.4 離線機上的 PDF 處理（備援方案）
+
+離線工作站**預設沒有任何 PDF 轉文字程式**，所以首選永遠是 §3.1：在連網機轉好再帶入。但如果 PDF 已經在離線機上、短期回不了連網機，備援做法是把 PyMuPDF 的 wheel 檔經 USB 帶入離線安裝：
+
+```bash
+# 連網機（一次性）：下載對應離線機 Python 版本與平台的 wheel
+pip download pymupdf -d pymupdf-wheels/
+# → pymupdf-wheels/ 整個資料夾複製到 USB
+
+# 離線機：不碰網路直接安裝
+pip install --no-index --find-links pymupdf-wheels/ pymupdf
+
+# 之後即可用 repo 附的腳本轉換
+python3 scripts/pdf_to_md.py sources/inbox/some-paper.pdf
+```
+
+限制與注意：
+- PyMuPDF 只能抽**文字型 PDF**（含中文/CJK）。**掃描檔（圖片型）抽不出字**，需要 OCR——OCR 工具鏈太重，不建議搬進離線機，掃描檔一律回連網機處理。
+- `scripts/pdf_to_md.py` 在未安裝 PyMuPDF 時會直接印出上述離線安裝指引，不會默默失敗。
+- LLM 遇到 inbox 裡讀不了的 PDF 時，依 CLAUDE.md 規則列入「資料缺口」，不憑檔名猜內容。
 
 ## 4. 版本控制策略
 
@@ -159,6 +181,7 @@ llm-wiki 需要 LLM 能**自主讀寫多個檔案**，不是單輪問答。本 r
 - [ ] 下載 LLM runtime 安裝檔 + 模型檔（GGUF），USB 搬入離線機
 - [ ] 下載 agent CLI 與（可選）Obsidian 安裝檔
 - [ ] 確認離線機有 Python 3.8+（`wiki_search.py` 只用標準函式庫）與 git
+- [ ] （可選）`pip download pymupdf -d pymupdf-wheels/` 帶入離線機備用，作為離線 PDF 轉文字的備援（§3.4）；主要流程仍是在連網機轉好 .md
 
 日常循環（完全離線）：
 

@@ -101,5 +101,6 @@ tags: [tag1, tag2]
 ## 離線環境注意事項
 
 - 不要嘗試任何網路操作（抓網頁、下載、呼叫 API）。缺的資料列入 lint 報告的「資料缺口」，由使用者在有網路的機器上蒐集後放進 `sources/inbox/`。
+- **inbox 裡的 PDF**：本機預設沒有 PDF 轉文字工具。先試 `python3 scripts/pdf_to_md.py <檔案>`（需要 PyMuPDF，未安裝時腳本會印出離線安裝指引）；轉出 .md 後 ingest 該 .md，原 PDF 一併移入 archive。轉不了（未安裝依賴或是掃描檔）就把該 PDF 列入「資料缺口」請使用者在連網機轉檔，**絕不憑檔名猜測內容**。
 - 搜尋一律用本地工具：`scripts/wiki_search.py`、ripgrep、直接讀檔。
 - 修改 `wiki/pages/` 後，提醒使用者（或直接執行）`python3 scripts/wiki_search.py index` 重建搜尋索引。
