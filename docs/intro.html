@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Wiki 離線工作站 — 架構與流程</title>
+<style>
+  :root {
+    --paper: #f4f6f7;
+    --panel: #ffffff;
+    --panel-2: #eaeef0;
+    --ink: #1d2731;
+    --ink-2: #52626f;
+    --line: #d3dbdf;
+    --accent: #16608d;
+    --accent-ink: #ffffff;
+    --accent-soft: #e3edf4;
+    --ok: #2e7d4f;
+    --ok-soft: #e2f0e8;
+    --warn: #9a6a12;
+    --warn-soft: #f6ecd7;
+    --code-bg: #edf1f3;
+    --shadow: 0 1px 2px rgba(29, 39, 49, .06), 0 8px 24px rgba(29, 39, 49, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #101820;
+      --panel: #17212b;
+      --panel-2: #1e2a36;
+      --ink: #d8e2ea;
+      --ink-2: #8fa1af;
+      --line: #2b3947;
+      --accent: #64abd8;
+      --accent-ink: #0c1219;
+      --accent-soft: #1a2e3f;
+      --ok: #6fbf90;
+      --ok-soft: #16301f;
+      --warn: #d8a94e;
+      --warn-soft: #33270f;
+      --code-bg: #0d141b;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f4f6f7; --panel: #ffffff; --panel-2: #eaeef0; --ink: #1d2731;
+    --ink-2: #52626f; --line: #d3dbdf; --accent: #16608d; --accent-ink: #ffffff;
+    --accent-soft: #e3edf4; --ok: #2e7d4f; --ok-soft: #e2f0e8; --warn: #9a6a12;
+    --warn-soft: #f6ecd7; --code-bg: #edf1f3;
+    --shadow: 0 1px 2px rgba(29,39,49,.06), 0 8px 24px rgba(29,39,49,.05);
+  }
+  :root[data-theme="dark"] {
+    --paper: #101820; --panel: #17212b; --panel-2: #1e2a36; --ink: #d8e2ea;
+    --ink-2: #8fa1af; --line: #2b3947; --accent: #64abd8; --accent-ink: #0c1219;
+    --accent-soft: #1a2e3f; --ok: #6fbf90; --ok-soft: #16301f; --warn: #d8a94e;
+    --warn-soft: #33270f; --code-bg: #0d141b;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
+                 "Hiragino Sans", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.85;
+  }
+  code, pre, .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas,
+                 "Noto Sans Mono CJK TC", monospace;
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- header ---------- */
+  header { padding: 72px 0 40px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 18px;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 44px); line-height: 1.25; margin: 0 0 14px;
+    font-weight: 800; letter-spacing: .01em; text-wrap: balance;
+  }
+  .lede { font-size: 18px; color: var(--ink-2); max-width: 40em; margin: 0 0 26px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 12.5px; padding: 4px 12px; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--ink-2); background: var(--panel);
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  .chip strong { color: var(--accent); font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 64px; }
+  .sec-label {
+    display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px;
+  }
+  .sec-label .no {
+    font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+    color: var(--accent); font-weight: 600; letter-spacing: .08em;
+  }
+  h2 { font-size: 25px; margin: 0 0 6px; font-weight: 750; letter-spacing: .01em; }
+  h3 { font-size: 18px; margin: 34px 0 10px; font-weight: 700; }
+  p { margin: 12px 0; max-width: 42em; }
+  .sub { color: var(--ink-2); margin-top: 0; }
+  a { color: var(--accent); }
+  strong { font-weight: 700; }
+
+  /* ---------- generic panels ---------- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--shadow);
+  }
+  .scroll { overflow-x: auto; }
+
+  /* ---------- layer stack diagram ---------- */
+  .stack { display: flex; flex-direction: column; gap: 0; margin: 26px 0; }
+  .layer {
+    display: grid; grid-template-columns: 150px 1fr; gap: 18px;
+    padding: 18px 22px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  }
+  .layer + .arrow-row { display: flex; justify-content: center; padding: 2px 0; }
+  .arrow-row span { color: var(--ink-2); font-size: 15px; line-height: 1.4; }
+  .layer .tag {
+    font-family: ui-monospace, Consolas, monospace; font-size: 13.5px;
+    color: var(--accent); font-weight: 600; padding-top: 2px; word-break: break-all;
+  }
+  .layer .desc { font-size: 14.5px; color: var(--ink-2); }
+  .layer .desc b { color: var(--ink); font-weight: 700; display: block; font-size: 15.5px; margin-bottom: 2px; }
+  .layer.immutable { border-left: 4px solid var(--ink-2); }
+  .layer.wiki-l    { border-left: 4px solid var(--accent); }
+  .layer.schema-l  { border-left: 4px solid var(--warn); }
+  .layer.artifact  { border-left: 4px solid var(--ok); }
+  @media (max-width: 620px) { .layer { grid-template-columns: 1fr; gap: 6px; } }
+
+  /* ---------- file tree ---------- */
+  pre.tree {
+    margin: 20px 0; padding: 20px 24px; font-size: 13.5px; line-height: 1.75;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    overflow-x: auto; color: var(--ink);
+  }
+  pre.tree .c { color: var(--ink-2); }
+  pre.tree .hl { color: var(--accent); font-weight: 600; }
+
+  /* ---------- ops table ---------- */
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 20px 0; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-2); font-weight: 700; border-bottom: 2px solid var(--ink);
+  }
+  td code {
+    background: var(--code-bg); padding: 2px 7px; border-radius: 5px;
+    font-size: 12.5px; white-space: nowrap;
+  }
+  .tbl-wrap { overflow-x: auto; }
+
+  /* ---------- pipeline ---------- */
+  .pipe { display: flex; align-items: stretch; gap: 0; margin: 26px 0; overflow-x: auto; padding-bottom: 6px; }
+  .stage {
+    min-width: 132px; flex: 1; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 14px 12px; box-shadow: var(--shadow);
+  }
+  .stage .s-tag {
+    font-family: ui-monospace, Consolas, monospace; font-size: 11.5px;
+    color: var(--accent); font-weight: 600; letter-spacing: .05em;
+  }
+  .stage b { display: block; font-size: 15px; margin: 3px 0 4px; }
+  .stage small { color: var(--ink-2); font-size: 12.5px; line-height: 1.55; display: block; }
+  .pipe .link {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 0 8px; color: var(--ink-2); flex: 0 0 auto;
+  }
+  .pipe .link .gate {
+    font-size: 10.5px; color: var(--warn); font-weight: 700; letter-spacing: .05em;
+    white-space: nowrap;
+  }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start;
+    margin: 22px 0; padding: 16px 20px; border-radius: 10px; font-size: 15px;
+  }
+  .callout.rule { background: var(--accent-soft); border: 1px solid var(--accent); }
+  .callout.warn { background: var(--warn-soft); border: 1px solid var(--warn); }
+  .callout.pass { background: var(--ok-soft); border: 1px solid var(--ok); }
+  .callout .ico { font-weight: 800; font-size: 15px; }
+  .callout.rule .ico { color: var(--accent); }
+  .callout.warn .ico { color: var(--warn); }
+  .callout.pass .ico { color: var(--ok); }
+  .callout p { margin: 0; max-width: none; }
+
+  /* ---------- trace chain ---------- */
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 22px 0; }
+  .chain .node {
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 13px; box-shadow: var(--shadow);
+  }
+  .chain .node em { display: block; font-style: normal; font-size: 11px; color: var(--ink-2); margin-bottom: 1px; }
+  .chain .node.req { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .chain .sep { color: var(--ink-2); }
+
+  /* ---------- cards ---------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 22px 0; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .card b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .card b .k {
+    font-family: ui-monospace, Consolas, monospace; color: var(--accent);
+    font-size: 13px; font-weight: 600; margin-right: 6px;
+  }
+  .card p { font-size: 14px; color: var(--ink-2); margin: 0; }
+  .card p code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  /* ---------- kv list ---------- */
+  ul.kv { list-style: none; padding: 0; margin: 18px 0; max-width: 46em; }
+  ul.kv li {
+    padding: 10px 0 10px 18px; border-left: 3px solid var(--line); margin: 8px 0;
+    font-size: 15px;
+  }
+  ul.kv li b { color: var(--ink); }
+  ul.kv li.acc { border-left-color: var(--accent); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+    font-weight: 700; padding: 3px 12px; border-radius: 999px;
+    background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok);
+    font-family: ui-monospace, Consolas, monospace;
+  }
+
+  /* ---------- RAG comparison ---------- */
+  .vs { display: flex; flex-direction: column; gap: 22px; margin: 26px 0; }
+  .flow-panel {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .flow-panel .fp-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel-2);
+  }
+  .flow-panel .fp-head b { font-size: 16px; }
+  .flow-panel .fp-head small { color: var(--ink-2); font-size: 13px; }
+  .flow-panel.win { border-color: var(--accent); }
+  .flow-panel.win .fp-head { background: var(--accent-soft); }
+  .fp-body { padding: 16px 20px 18px; }
+  .fp-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .fp-row + .fp-row { margin-top: 12px; }
+  .fp-label {
+    flex: 0 0 auto; width: 92px; font-size: 11.5px; font-weight: 700;
+    letter-spacing: .08em; color: var(--ink-2); text-transform: uppercase;
+  }
+  .fp-node {
+    flex: 0 0 auto; font-size: 13px; padding: 7px 13px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--paper); white-space: nowrap;
+  }
+  .fp-node.hot { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); font-weight: 600; }
+  .fp-node.store { border-style: dashed; color: var(--ink-2); }
+  .fp-node.wiki-n { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .fp-node.out { border-color: var(--ok); background: var(--ok-soft); }
+  .fp-arr { flex: 0 0 auto; color: var(--ink-2); font-size: 13px; }
+  .fp-note { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+  .fp-note .rep { color: var(--warn); font-weight: 700; }
+  .fp-note .once { color: var(--accent); font-weight: 700; }
+  .repeat-tag {
+    flex: 0 0 auto; font-size: 11px; font-weight: 800; letter-spacing: .06em;
+    color: var(--warn); border: 1.5px dashed var(--warn); border-radius: 999px;
+    padding: 3px 10px; white-space: nowrap;
+  }
+  .once-tag {
+    flex: 0 0 auto; font-size: 11px; font-weight: 800; letter-spacing: .06em;
+    color: var(--accent); border: 1.5px solid var(--accent); border-radius: 999px;
+    padding: 3px 10px; white-space: nowrap;
+  }
+  table.vs-tbl td:first-child { font-weight: 700; white-space: nowrap; }
+  table.vs-tbl td.rag { color: var(--ink-2); }
+  table.vs-tbl td.wk { }
+  table.vs-tbl td.wk::before {
+    content: "●"; color: var(--accent); font-size: 9px; margin-right: 8px; vertical-align: 2px;
+  }
+
+  footer {
+    margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--line);
+    color: var(--ink-2); font-size: 13.5px;
+  }
+  footer code { background: var(--code-bg); padding: 1px 7px; border-radius: 4px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Offline Workstation · LLM-Maintained Wiki · Spec-to-RTL</div>
+  <h1>LLM Wiki 離線工作站：架構與流程</h1>
+  <p class="lede">
+    改編自 Karpathy 的 llm-wiki 模式：知識只編譯一次、由 LLM 持續維護，
+    並在其上建立一條可追溯的硬體設計流程——spec 進來，經 wiki 編譯，產出 Verilog-2001 RTL。
+    全系統零網路依賴。
+  </p>
+  <div class="chips">
+    <span class="chip">LLM <strong>Qwen3.6-27B</strong> / Ollama</span>
+    <span class="chip">Agent <strong>OpenCode</strong></span>
+    <span class="chip">HDL <strong>Verilog-2001</strong></span>
+    <span class="chip">Sim <strong>VCS · Questa · Xcelium</strong></span>
+    <span class="chip">Search <strong>SQLite FTS5</strong>（零依賴）</span>
+  </div>
+</header>
+
+<!-- ================= 1 核心概念 ================= -->
+<section>
+  <div class="sec-label"><span class="no">01</span><h2>核心概念：編譯一次，持續維護</h2></div>
+  <p class="sub">為什麼不用 RAG</p>
+  <p>
+    傳統 RAG 每次查詢都重新檢索原始文件——同樣的綜合工作反覆做、結果不留存。
+    llm-wiki 反過來：<strong>來源進來時就編譯成結構化的 wiki 頁面</strong>（Markdown、互相連結、附引用），
+    之後查詢直接讀 wiki。知識是持久、複利成長的資產；每加一份來源，整個 wiki 的綜合品質都在提升。
+  </p>
+  <p>
+    分工明確：<strong>人蒐集來源、提問、做裁決；LLM 做所有記帳</strong>——更新頁面、補交叉連結、檢查矛盾。
+    wiki 荒廢的主因是維護太累，而 LLM 不會累、不會忘記更新第 15 個交叉連結。
+  </p>
+</section>
+
+<!-- ================= 2 與傳統 RAG 的比較 ================= -->
+<section>
+  <div class="sec-label"><span class="no">02</span><h2>與傳統 RAG 的比較</h2></div>
+  <p class="sub">同一個比喻：RAG 是直譯器（每次執行都重新解讀），llm-wiki 是編譯器（編譯一次、之後直接跑）</p>
+
+  <div class="vs">
+    <div class="flow-panel">
+      <div class="fp-head">
+        <b>傳統 RAG</b>
+        <small>綜合發生在查詢時——同樣的工作每問一次做一次，結果不留存</small>
+      </div>
+      <div class="fp-body">
+        <div class="fp-row">
+          <span class="fp-label">建置期</span>
+          <span class="fp-node">原始文件</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node">切塊 chunking</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node">embedding</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node store">向量資料庫</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-label">每次查詢</span>
+          <span class="repeat-tag">↻ 每問一次重做</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node hot">相似度檢索</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node hot">撈出零散 chunks</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node hot">LLM 現場拼裝理解</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node">回答</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node store">丟棄</span>
+        </div>
+        <p class="fp-note">
+          橘色的三步是<span class="rep">重複成本</span>：跨文件的關聯每次都要現場重建，
+          答得好不好取決於這次剛好撈到哪些 chunks；上次答過的綜合結論下次<strong>從零再來</strong>。
+          矛盾的來源各自被撈出來，模型現場硬拼。
+        </p>
+      </div>
+    </div>
+
+    <div class="flow-panel win">
+      <div class="fp-head">
+        <b>LLM Wiki</b>
+        <small>綜合發生在 ingest 時——編譯一次，之後每次查詢都站在已整理的知識上</small>
+      </div>
+      <div class="fp-body">
+        <div class="fp-row">
+          <span class="fp-label">ingest 時</span>
+          <span class="once-tag">✓ 每份來源只做一次</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node">完整閱讀來源</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node wiki-n">整合進 wiki 頁面</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node wiki-n">交叉連結＋標注矛盾</span>
+        </div>
+        <div class="fp-row">
+          <span class="fp-label">每次查詢</span>
+          <span class="fp-node">讀 index.md</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node">讀相關頁面</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node out">附引用的回答</span>
+          <span class="fp-arr">→</span>
+          <span class="fp-node wiki-n">有價值就回存 wiki</span>
+        </div>
+        <p class="fp-note">
+          重活集中在 <span class="once">ingest 那一次</span>；查詢讀的是<strong>已經消化、互相連結、
+          矛盾已標注</strong>的頁面。回答本身還能回存成新頁面——知識不是消耗品，是複利資產。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <h3>逐項對照</h3>
+  <div class="tbl-wrap">
+  <table class="vs-tbl">
+    <tr><th></th><th>傳統 RAG</th><th>LLM Wiki</th></tr>
+    <tr><td>綜合時機</td>
+        <td class="rag">查詢時，現場拼裝，每次重做</td>
+        <td class="wk">ingest 時做一次，之後直接用</td></tr>
+    <tr><td>知識留存</td>
+        <td class="rag">無——答完即丟，系統不會變聰明</td>
+        <td class="wk">複利成長——每份來源、每個好答案都沉澱進頁面</td></tr>
+    <tr><td>檢索單位</td>
+        <td class="rag">零散 chunks（相似度撈出，缺上下文）</td>
+        <td class="wk">完整頁面（人可讀、有結構、有連結）</td></tr>
+    <tr><td>來源矛盾</td>
+        <td class="rag">矛盾的 chunks 一起被撈出，模型現場硬拼</td>
+        <td class="wk">ingest 時就發現，並列兩說標 ⚠️ 待人裁決</td></tr>
+    <tr><td>引用追溯</td>
+        <td class="rag">能指到 chunk，難以指到主張層級</td>
+        <td class="wk">每個主張連回來源檔；spec-to-RTL 更是機器可驗證</td></tr>
+    <tr><td>基礎設施</td>
+        <td class="rag">embedding 模型＋向量資料庫＋檢索管線</td>
+        <td class="wk">Markdown＋git＋SQLite FTS5（純標準函式庫）</td></tr>
+    <tr><td>離線適配</td>
+        <td class="rag">embedding 模型也要離線部署，管線更重</td>
+        <td class="wk">零額外依賴，天生離線</td></tr>
+    <tr><td>人的角色</td>
+        <td class="rag">只能調參數（chunk 大小、top-k…）</td>
+        <td class="wk">直接讀寫 wiki——知識庫本身就是給人看的</td></tr>
+    <tr><td>主要成本</td>
+        <td class="rag">每次查詢的檢索與重建（隨查詢次數線性增加）</td>
+        <td class="wk">ingest 與定期 lint（隨來源數量增加，查詢近乎免費）</td></tr>
+  </table>
+  </div>
+
+  <div class="callout rule">
+    <span class="ico">§</span>
+    <p><strong>什麼時候 RAG 仍是對的</strong>：語料巨大且低價值密度（客服紀錄、全站文件）、
+    查詢一次性、不需要知識沉澱時，RAG 的「不整理、用時再撈」反而划算。
+    llm-wiki 適合的是<strong>小而精、長期經營、需要追溯</strong>的領域——正是離線工作站＋硬體設計的情境。
+    本 repo 的搜尋層（FTS5）只負責「找到該讀哪頁」，綜合永遠由 wiki 頁面承擔，不是 RAG。</p>
+  </div>
+</section>
+
+<!-- ================= 3 四層架構 ================= -->
+<section>
+  <div class="sec-label"><span class="no">03</span><h2>四層架構</h2></div>
+  <p class="sub">資訊單向往下流；每一層只依賴上一層</p>
+
+  <div class="stack">
+    <div class="layer schema-l">
+      <div class="tag">CLAUDE.md</div>
+      <div class="desc"><b>Schema — 規則層</b>
+        定義 wiki 結構、慣例與全部操作流程，是 LLM 的操作手冊、唯一規範來源。
+        <code>AGENTS.md</code>（Codex）與 <code>opencode.json</code>（OpenCode）都指回這份，零漂移。</div>
+    </div>
+    <div class="arrow-row"><span>↓ 約束</span></div>
+    <div class="layer immutable">
+      <div class="tag">sources/</div>
+      <div class="desc"><b>原始來源 — 不可變</b>
+        文章、筆記、spec 文件。<code>inbox/</code> 待處理 → <code>archive/</code> 永久保存。
+        LLM 絕不修改；是所有主張的最終依據。</div>
+    </div>
+    <div class="arrow-row"><span>↓ ingest（編譯）</span></div>
+    <div class="layer wiki-l">
+      <div class="tag">wiki/</div>
+      <div class="desc"><b>Wiki — LLM 維護的知識層</b>
+        <code>index.md</code>（目錄）＋ <code>log.md</code>（追加式日誌）＋
+        <code>pages/</code> 五分類：concepts · entities · notes · <strong>specs</strong>（編號需求）· <strong>design</strong>（設計頁）。</div>
+    </div>
+    <div class="arrow-row"><span>↓ 生成（只讀設計頁）</span></div>
+    <div class="layer artifact">
+      <div class="tag">rtl/ + verif/</div>
+      <div class="desc"><b>產物層 — 可重生</b>
+        Verilog-2001 RTL、自檢 testbench、filelist、三種商用模擬器 run scripts。
+        任何一個檔案都能從設計頁重新生成。</div>
+    </div>
+  </div>
+
+  <h3>目錄一覽</h3>
+  <pre class="tree">llm-wiki-for-offline-workstation/
+├── <span class="hl">CLAUDE.md</span>              <span class="c"># Schema：唯一規則來源</span>
+├── AGENTS.md / opencode.json  <span class="c"># Codex / OpenCode 入口（指回 CLAUDE.md）</span>
+├── sources/{inbox,archive}/   <span class="c"># 原始來源（不可變）</span>
+├── wiki/
+│   ├── index.md · log.md      <span class="c"># 目錄與追加式日誌</span>
+│   └── pages/{concepts,entities,notes,<span class="hl">specs</span>,<span class="hl">design</span>}/
+├── <span class="hl">rtl/</span>                   <span class="c"># Verilog-2001（自設計頁生成）</span>
+├── <span class="hl">verif/</span>                 <span class="c"># TB · filelist.f · sim/run_{vcs,questa,xrun}.sh</span>
+├── scripts/
+│   ├── wiki_search.py         <span class="c"># SQLite FTS5 全文搜尋（純標準函式庫）</span>
+│   ├── trace_check.py         <span class="c"># 追溯健檢 + 追溯矩陣重生</span>
+│   └── pdf_to_md.py           <span class="c"># PDF 轉檔備援（PyMuPDF 可離線安裝）</span>
+└── docs/                      <span class="c"># ARCHITECTURE · SPEC-TO-RTL-FLOW</span></pre>
+</section>
+
+<!-- ================= 3 核心操作 ================= -->
+<section>
+  <div class="sec-label"><span class="no">04</span><h2>三個核心操作</h2></div>
+  <p class="sub">所有 wiki 活動都是這三件事的組合；每次操作 = 一個 git commit</p>
+
+  <div class="cards">
+    <div class="card">
+      <b><span class="k">ingest</span>吸收來源</b>
+      <p>讀 inbox 的新來源，整合進現有頁面（一份來源觸及 10–15 頁是正常的），
+      補交叉連結，來源移入 archive，更新 index 與 log。
+      commit：<code>ingest: 標題</code></p>
+    </div>
+    <div class="card">
+      <b><span class="k">query</span>查詢</b>
+      <p>先讀 index.md 找頁面（頁數多用 FTS5 搜尋），綜合出<strong>每個主張都附引用</strong>的答案。
+      有長期價值的答案回存為 notes 頁面，知識複利。
+      commit：<code>note: 標題</code></p>
+    </div>
+    <div class="card">
+      <b><span class="k">lint</span>健檢</b>
+      <p>每累積約 10 次 ingest 執行：抓矛盾、過時主張、孤兒頁、斷鏈、index 失準，
+      並列出資料缺口請人補來源。
+      commit：<code>lint: 日期</code></p>
+    </div>
+  </div>
+
+  <div class="callout rule">
+    <span class="ico">§</span>
+    <p><strong>四條鐵律</strong>：sources/ 絕不修改 · 每個主張可追溯到來源 ·
+    每次操作後更新 index.md 與 log.md · 來源矛盾時並列兩說標 <code>⚠️ 待釐清</code>，不擅自裁決。</p>
+  </div>
+</section>
+
+<!-- ================= 4 離線設計 ================= -->
+<section>
+  <div class="sec-label"><span class="no">05</span><h2>離線工作站的關鍵設計</h2></div>
+  <p class="sub">日常運作零網路；需要網路的事全部推到連網蒐集機</p>
+
+  <ul class="kv">
+    <li class="acc"><b>本地推論</b> — Ollama 跑 Qwen3.6-27B，OpenCode 由 <code>opencode.json</code>
+      直接載入 CLAUDE.md 為規則並指向本地端點。建議 context ≥ 32K（ingest 要同時裝下來源＋十幾頁相關頁面）。</li>
+    <li class="acc"><b>來源管線</b> — 連網機完成「網頁→Markdown、圖片本地化、<strong>PDF→.md 轉檔</strong>」，
+      整包經 USB 單向帶入 <code>sources/inbox/</code>。離線機備援：PyMuPDF wheel 離線安裝＋
+      <code>pdf_to_md.py</code>；轉不了的 PDF 列入資料缺口，<strong>絕不憑檔名猜內容</strong>。</li>
+    <li class="acc"><b>零依賴搜尋</b> — 分階段：&lt;100 頁直接讀 index；之後用
+      <code>wiki_search.py</code>（SQLite FTS5 + BM25，純標準函式庫，不需向量庫）。</li>
+    <li class="acc"><b>Git 即稽核軌跡</b> — 每次 LLM 操作一個 commit；框架更新走「整包 repo 資料夾經 USB →
+      工作站 AI merge」，<code>log.md</code> 設 merge=union 防衝突。本地 wiki 內容永不被更新覆蓋。</li>
+  </ul>
+</section>
+
+<!-- ================= 5 spec-to-rtl ================= -->
+<section>
+  <div class="sec-label"><span class="no">06</span><h2>Spec-to-RTL Flow</h2></div>
+  <p class="sub">wiki 是 spec 與 RTL 之間的編譯層</p>
+
+  <p>
+    直接把幾百頁的 spec 丟給本地模型寫 RTL：context 裝不下、無法追溯、spec 改版即災難。
+    這條 flow 把 spec <strong>編譯成兩級中間表示</strong>——先是編號需求，再是模組設計頁——RTL 只從設計頁生成：
+  </p>
+
+  <div class="pipe">
+    <div class="stage">
+      <span class="s-tag">sources/</span>
+      <b>Spec 文件</b>
+      <small>不可變原文<br>（v1.0, v1.1…）</small>
+    </div>
+    <div class="link"><span>→</span><span class="gate">人審</span></div>
+    <div class="stage">
+      <span class="s-tag">specs/</span>
+      <b>編號需求</b>
+      <small>REQ-UART-001…<br>ID 永不重編<br>歧義標 ⚠️</small>
+    </div>
+    <div class="link"><span>→</span><span class="gate">人審</span></div>
+    <div class="stage">
+      <span class="s-tag">design/</span>
+      <b>設計頁</b>
+      <small>ports · FSM · 握手<br>＝RTL 生成契約</small>
+    </div>
+    <div class="link"><span>→</span></div>
+    <div class="stage">
+      <span class="s-tag">rtl/ verif/</span>
+      <b>RTL + TB</b>
+      <small>Verilog-2001<br>自檢 testbench</small>
+    </div>
+    <div class="link"><span>→</span><span class="gate">人跑模擬</span></div>
+    <div class="stage">
+      <span class="s-tag">sim</span>
+      <b>TEST PASSED</b>
+      <small>VCS / Questa / Xcelium<br>失敗 log 貼回分析</small>
+    </div>
+  </div>
+
+  <div class="callout rule">
+    <span class="ico">§</span>
+    <p><strong>核心紀律：RTL 只從設計頁生成，絕不直接讀 spec。</strong>
+    設計頁資訊不足就先回頭補設計頁（必要時補需求頁）。
+    好處：單次生成的 context 永遠只有一張設計頁的量（27B 模型輕鬆裝下），且每行 RTL 都能追溯。</p>
+  </div>
+
+  <h3>六個操作</h3>
+  <div class="tbl-wrap">
+  <table>
+    <tr><th>指令</th><th>做什麼</th><th>commit</th></tr>
+    <tr><td><code>ingest</code>（spec 進 inbox）</td>
+        <td>spec → 需求頁；spec 改版時逐條 diff，變更標 🔶、波及的設計頁自動標 needs-review（影響分析）</td>
+        <td><code>spec: …</code></td></tr>
+    <tr><td><code>design uart-lite</code></td>
+        <td>需求頁 → 架構頁＋每模組一張設計頁；每條需求必須被至少一張設計頁的 implements 承接</td>
+        <td><code>design: …</code></td></tr>
+    <tr><td><code>rtl uart_tx</code></td>
+        <td>設計頁 → <code>rtl/uart_tx.v</code>，檔頭回鏈設計頁與 REQ ID，更新 filelist</td>
+        <td><code>rtl: …</code></td></tr>
+    <tr><td><code>verify uart-lite</code></td>
+        <td>自檢 TB（結尾必印 TEST PASSED/FAILED）＋三種模擬器 run scripts；模擬由人執行</td>
+        <td><code>verify: …</code></td></tr>
+    <tr><td><code>lint</code></td>
+        <td>一般健檢＋ <code>trace_check.py</code>：孤兒需求、斷鏈產物、needs-review 未清、矩陣過期</td>
+        <td><code>lint: …</code></td></tr>
+    <tr><td><code>flow uart-lite</code></td>
+        <td>半自動：design → rtl → verify 一口氣串完（見 08）</td>
+        <td>各階段照常</td></tr>
+  </table>
+  </div>
+
+  <h3>機器可驗證的追溯鏈</h3>
+  <div class="chain">
+    <span class="node"><em>spec 章節</em>§3.1</span>
+    <span class="sep">←</span>
+    <span class="node req"><em>需求</em>REQ-UART-004</span>
+    <span class="sep">←</span>
+    <span class="node"><em>設計頁 implements</em>design/uart-tx.md</span>
+    <span class="sep">←</span>
+    <span class="node"><em>檔頭回鏈</em>rtl/uart_tx.v</span>
+    <span class="sep">←</span>
+    <span class="node"><em>tb:</em>verif/tb_uart_lite.v</span>
+  </div>
+  <p>
+    <code>trace_check.py check</code> 機械化檢查整條鏈（有缺口 exit 1），
+    <code>trace_check.py matrix</code> 重生追溯矩陣頁。spec 改版時，被波及的範圍一查即知。
+  </p>
+</section>
+
+<!-- ================= 6 範例 ================= -->
+<section>
+  <div class="sec-label"><span class="no">07</span><h2>內附範例：uart-lite</h2></div>
+  <p class="sub">走完整條 flow 的參考實作 <span class="badge">✓ TEST PASSED · Icarus Verilog 12.0</span></p>
+  <p>
+    8N1、16-bit 可程式 baud divisor、valid/ready 握手。從 spec 文件出發：
+    <strong>13 條需求 → 3 張設計頁</strong>（架構＋TX＋RX）<strong>→ 3 個 RTL 模組 → loopback 自檢 TB</strong>
+    （4 bytes 背靠背傳輸＋壞停止位元的 frame error 測項），追溯零缺口。
+    <code>wiki/log.md</code> 記錄了每個階段的長相，是日後真實專案的範本。
+  </p>
+</section>
+
+<!-- ================= 7 半自動與大型設計 ================= -->
+<section>
+  <div class="sec-label"><span class="no">08</span><h2>半自動 flow 與大型 design</h2></div>
+
+  <h3>flow <span class="mono">&lt;block&gt;</span> — 串接但不失控</h3>
+  <p>需求單純時一個指令串完 design → rtl → verify。半自動與全自動的分界線劃在四個地方：</p>
+  <ul class="kv">
+    <li><b>Spec-Ingest 永遠不在 flow 裡</b> — spec 解讀必須人審，flow 從審過的需求頁起跑。</li>
+    <li><b>啟動 gate</b> — 需求頁有未清的 <code>⚠️</code> / <code>🔶</code> 就拒絕啟動。歧義不許自動流過。</li>
+    <li><b>每階段照常各自 commit</b> — git 歷史與手動逐步完全相同；卡住就停在該階段報告，已完成的不回滾。</li>
+    <li><b>模擬仍由人執行</b> — flow 的產出是「等待模擬的 RTL + TB」，不是「已驗證的設計」。</li>
+  </ul>
+
+  <h3>大型 block（如 MIPI CSI-2）的分解規則</h3>
+  <p>模組數 &gt; ~5 或需求數 &gt; ~30 時強制加四條：</p>
+  <div class="cards">
+    <div class="card"><b>需求分域</b><p>spec 按功能域拆多張需求頁，各用獨立前綴：
+      <code>REQ-DPHY-*</code>、<code>REQ-PKT-*</code>、<code>REQ-PIXEL-*</code></p></div>
+    <div class="card"><b>介面定義頁</b><p>模組間介面集中在 <code>design/&lt;block&gt;-interfaces.md</code>，唯一權威；
+      設計頁只引用介面名，消滅兩端認知不一致</p></div>
+    <div class="card"><b>遞迴架構頁</b><p>頂層只分解到子系統，子系統各有架構頁再分到模組；
+      每張架構頁直接子節點 ≤ ~7</p></div>
+    <div class="card"><b>分層 verify</b><p>模組 TB（含錯誤注入）→ 子系統 TB → top 整合 TB；
+      flow 一次只跑一個子系統</p></div>
+  </div>
+  <p>
+    不管 design 多大，單次 RTL 生成讀的都是固定三小份：模組設計頁＋所屬架構頁接線章節＋用到的介面定義。
+    <strong>context 有界</strong>——這是 27B 本地模型能做 CSI-2 量級的關鍵。
+  </p>
+</section>
+
+<!-- ================= 8 日常循環 ================= -->
+<section>
+  <div class="sec-label"><span class="no">09</span><h2>日常循環</h2></div>
+
+  <div class="pipe">
+    <div class="stage"><span class="s-tag">連網機</span><b>蒐集</b>
+      <small>Web Clipper · PDF 轉檔<br>模型檔下載</small></div>
+    <div class="link"><span>→</span><span class="gate">USB 單向</span></div>
+    <div class="stage"><span class="s-tag">inbox/</span><b>ingest</b>
+      <small>編譯進 wiki<br>commit 留痕</small></div>
+    <div class="link"><span>→</span></div>
+    <div class="stage"><span class="s-tag">query / flow</span><b>使用</b>
+      <small>附引用的答案<br>spec→RTL 產出</small></div>
+    <div class="link"><span>→</span></div>
+    <div class="stage"><span class="s-tag">~10 次 ingest</span><b>lint</b>
+      <small>矛盾 · 斷鏈 · 缺口<br>缺口清單回到蒐集</small></div>
+  </div>
+
+  <div class="callout warn">
+    <span class="ico">⚠</span>
+    <p><strong>安全邊界</strong>：資料流單向（連網機→離線機只進不出）；
+    來源是「被閱讀的資料」不是「被服從的指令」（防 prompt injection）；
+    wiki 內容永不離開離線工作站。</p>
+  </div>
+</section>
+
+<footer>
+  <p>
+    Repo：<code>dennisiver/llm-wiki-for-offline-workstation</code> ·
+    規則正文見 <code>CLAUDE.md</code> ·
+    詳細設計見 <code>docs/ARCHITECTURE.md</code> 與 <code>docs/SPEC-TO-RTL-FLOW.md</code> ·
+    模式出處：Karpathy, <em>llm-wiki</em>（gist）
+  </p>
+</footer>
+
+</div>
+
+</body>
+</html>
