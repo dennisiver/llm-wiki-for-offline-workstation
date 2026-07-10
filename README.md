@@ -48,7 +48,8 @@ llm-wiki-for-offline-workstation/
 │   └── trace_check.py     # Spec-to-RTL 追溯健檢與追溯矩陣產生
 └── docs/
     ├── ARCHITECTURE.md    # 離線工作站的完整架構設計
-    └── SPEC-TO-RTL-FLOW.md# spec → 需求頁 → 設計頁 → RTL 的硬體設計流程
+    ├── SPEC-TO-RTL-FLOW.md# spec → 需求頁 → 設計頁 → RTL 的硬體設計流程
+    └── intro.html         # 圖解版總覽（自包含單檔，瀏覽器直接開）
 ```
 
 ## 三個核心操作
