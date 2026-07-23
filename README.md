@@ -45,7 +45,8 @@ llm-wiki-for-offline-workstation/
 ├── scripts/
 │   ├── wiki_search.py     # 離線搜尋：SQLite FTS5（純 Python 標準函式庫）
 │   ├── pdf_to_md.py       # PDF 轉 Markdown 備援（PyMuPDF，可離線安裝）
-│   └── trace_check.py     # Spec-to-RTL 追溯健檢與追溯矩陣產生
+│   ├── trace_check.py     # Spec-to-RTL 追溯健檢與追溯矩陣產生
+│   └── verilog_map.py     # 既有 Verilog design 的模組階層解析／版本 diff（Reverse-Ingest 用）
 └── docs/
     ├── ARCHITECTURE.md    # 離線工作站的完整架構設計
     ├── SPEC-TO-RTL-FLOW.md# spec → 需求頁 → 設計頁 → RTL 的硬體設計流程
@@ -65,6 +66,8 @@ llm-wiki-for-offline-workstation/
 ## Spec-to-RTL Flow（硬體設計）
 
 在三個核心操作之上，本 repo 內建一條硬體設計流程：spec 文件 → 編號需求頁 → 模組設計頁 → Verilog-2001 RTL + 自檢 testbench，全程可追溯（`scripts/trace_check.py` 機械化檢查 REQ ↔ 設計頁 ↔ RTL ↔ TB）。RTL 只從設計頁生成、絕不直接讀 spec——wiki 是 spec 與 RTL 之間的編譯層。附完整範例 uart-lite（已用模擬驗證 PASS）。詳見 [docs/SPEC-TO-RTL-FLOW.md](docs/SPEC-TO-RTL-FLOW.md)。
+
+也支援**反方向**：Reverse-Ingest 匯入一份既有的 Verilog design（例如一份既有的 MIPI IP），用 `scripts/verilog_map.py` 解析真實模組階層、忠實重建設計頁（as-is，不預先比對 spec），之後透過 Design-Revise 按需查 spec 給修改建議、盡量維持原設計；新版 IP 匯入時有結構化 diff 與三方衝突判斷，不會靜默覆蓋你的修改。詳見 [docs/SPEC-TO-RTL-FLOW.md](docs/SPEC-TO-RTL-FLOW.md) §8。
 
 ## 離線工作站的關鍵調整
 
