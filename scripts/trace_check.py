@@ -23,7 +23,8 @@ DESIGN_DIR = REPO_ROOT / "wiki" / "pages" / "design"
 FILELIST = REPO_ROOT / "verif" / "filelist.f"
 MATRIX_PATH = REPO_ROOT / "wiki" / "pages" / "notes" / "traceability-matrix.md"
 
-REQ_ROW = re.compile(r"^\|\s*(REQ-[A-Z0-9]+-\d+)\s*\|(.*)\|(.*)\|(.*)\|\s*$")
+# 前綴支援多段（例：REQ-I3C-SDR-001），最後一段固定為數字編號
+REQ_ROW = re.compile(r"^\|\s*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\|(.*)\|(.*)\|(.*)\|\s*$")
 
 
 def parse_requirements():
