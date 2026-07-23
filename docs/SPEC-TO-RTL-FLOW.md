@@ -141,3 +141,42 @@ design/
 - **下指令的粒度不變**：`design csi2-packet-layer`、`rtl pkt_parser`——一次一個子系統/模組，每層產物審過再往下，與小 design 完全相同的節奏。
 
 介面定義頁是這個量級的關鍵新元素：模組 A 的輸出與模組 B 的輸入若各寫各的，RTL 生成時兩邊不一致要到子系統模擬才炸出來；集中定義後，設計頁只引用介面名，`trace_check.py` 之外人工 review 也只需要看一頁。
+
+## 8. 反向流程：Reverse-Ingest（匯入既有 Verilog design 並修改）
+
+正向流程從 spec 出發、從零設計；現實中更常見的是**已經有一包現成的 design**（例如一份 MIPI IP），想在不大改的前提下修改——新增或不確定的部分參考 spec，其餘盡量維持原設計。操作規則的正式定義在 [CLAUDE.md](../CLAUDE.md) 操作 7，這裡說明資料模型與日常用法。
+
+### 8.1 目錄模型：凍結 baseline vs 工作副本
+
+```
+sources/archive/mipi-csi2-rx/        凍結的原始碼（不可變，含 .version 版本標籤）
+sources/archive/mipi-csi2-rx-v1.0/   被新版取代的舊版（永久封存）
+rtl/mipi-csi2-rx/                    工作副本——Design-Revise 後 RTL-Gen 覆寫的對象
+wiki/pages/design/mipi-csi2-rx/      逆向重建的架構頁＋模組設計頁（專案子目錄）
+```
+
+隨時可以 `diff -ru sources/archive/mipi-csi2-rx/ rtl/mipi-csi2-rx/` 看「原廠版 vs 目前改到哪」。設計頁的專案子目錄慣例對 spec 設計的大型 block 同樣適用——按專案分、不按來源分，`origin: reverse-engineered` frontmatter 才是機器可讀的來源標記。
+
+### 8.2 日常用法
+
+| 你說 | 發生什麼 | commit |
+|------|----------|--------|
+| 「reverse-ingest mipi-csi2-rx」（inbox 有整包 .v） | `verilog_map.py` 解析真實階層 → 逆向重建設計頁（as-is、不比對 spec）→ 原始碼凍結 + 工作副本落地 | `reverse-ingest: …` |
+| 「design-revise pkt_parser：…你的想法…」 | 只針對改動範圍查 spec 給建議；衝突標 ⚠️ 不阻擋；每輪各自 commit | `design: … revise` |
+| 「rtl pkt_parser」 | 依設計頁重生工作副本；行為唯設計頁是問，風格可參考 baseline（diff 雜訊小） | `rtl: …` |
+| 「reverse-ingest mipi-csi2-rx」（archive 已存在） | 更新模式：舊版封存 → `verilog_map.py diff` 結構比對 → 逐檔三方判斷（你改過的檔案絕不自動覆蓋） | `reverse-ingest: … update` |
+
+### 8.3 兩條核心紀律
+
+1. **匯入時輕量**：不預先逐模組比對 spec。查 spec、標 `deviates`、跨域分析都是**按需**發生（Design-Revise touch 到、或你明確要求核對時）。維持原設計的部分不會被主動挑毛病。
+2. **as-is 原則**：設計頁忠實記錄 RTL 實際行為，模組邊界跟真實階層走（與 spec 功能域分法不同是常態）。行為變更只能經由顯式的 Design-Revise，不能是記錄過程的副作用——否則重生 RTL 時行為會被默默改掉。
+
+### 8.4 工具
+
+```bash
+python3 scripts/verilog_map.py map rtl/mipi-csi2-rx/          # 階層樹＋模組清單
+python3 scripts/verilog_map.py ports rtl/mipi-csi2-rx/ pkt_parser   # 單模組 ports
+python3 scripts/verilog_map.py diff <舊版目錄> <新版目錄>      # 版本結構差異
+```
+
+regex 啟發式解析、純標準函式庫。**不解析 generate 區塊**——本 flow 生成的 RTL 一律禁用 generate（重複結構明確展開為具名 instance，除錯時波形可直接對應），原廠 baseline 若用了 generate 會收到「階層不保證完整」的警告，該部分需人工確認；經 Design-Revise 重生後即為展開形式，警告自然消失。
