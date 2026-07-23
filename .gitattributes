@@ -1,2 +1,3 @@
 # log.md 是追加式檔案：merge 時兩邊聯集，避免框架更新與本地紀錄衝突
 wiki/log.md merge=union
+CHANGELOG.md merge=union

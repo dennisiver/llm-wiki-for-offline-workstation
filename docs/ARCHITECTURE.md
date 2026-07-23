@@ -159,34 +159,96 @@ python3 scripts/pdf_to_md.py sources/inbox/some-paper.pdf
 - 搜尋索引 `.db` 不進版控（見 `.gitignore`），隨時可重建。
 - 備份 = `git clone` 到第二顆硬碟，或 `git bundle` 一個檔案帶走。
 
-### 4.1 離線更新框架（git bundle 經 USB）
+### 4.1 離線更新框架
 
-工作站不能 `git pull`，框架更新（CLAUDE.md 規則、scripts、docs）用 bundle 走 USB 通道，merge 交給工作站的 AI 執行。
+工作站不能 `git pull`，框架更新（`CLAUDE.md` 規則、`scripts/`、`docs/`）要靠實體媒介
+（USB）帶進去，merge 交給工作站的 AI 執行。這個 repo 會持續長大（每次擴充規則、
+每次匯入真實專案），升級是**反覆會發生的事**，所以流程整套寫在這裡、往後照做
+即可，不用每次重新討論。
 
-**連網機**（打包最新版）：
+**主要方法：整包資料夾複製**（貼近實際操作——直接複製整個含 `.git` 的資料夾，
+不需要額外打包）：
+
+**連網機**：
 
 ```bash
-git clone https://github.com/dennisiver/llm-wiki-for-offline-workstation.git
-cd llm-wiki-for-offline-workstation
+git pull                          # 拿最新版（或先 git clone 一份）
+# 把整個資料夾（含隱藏的 .git）複製到 USB
+```
+
+**工作站**：解壓/複製到暫存位置（**不要覆蓋**現有的工作目錄），例如
+`~/transfer/llm-wiki-for-offline-workstation`，然後對 agent 下指令，範本
+（直接複製貼上，改路徑即可）：
+
+```
+我從連網機帶入了新版的 llm-wiki repo 資料夾，解壓在：
+~/transfer/llm-wiki-for-offline-workstation
+我工作中的 repo 在：
+~/llm-wiki-for-offline-workstation
+
+請依序執行，每步完成後回報：
+
+1. 前置檢查（在我工作中的 repo 裡）：
+   - ls -a 確認有 .git；git log --oneline -3 看目前版本
+   - git status 確認乾淨；有未 commit 的變更就先 commit
+     （訊息：wip: 更新前存檔）
+
+2. 打檢查點（比翻 git reflog 更好找的回滾點）：
+   - git tag pre-update-$(date +%Y%m%d)
+
+3. 把帶入的資料夾當 remote 合併：
+   - git fetch ~/transfer/llm-wiki-for-offline-workstation <分支名>
+   - git merge FETCH_HEAD
+
+4. 若有衝突，依以下原則解決：
+   - sources/ 一律保留本地版本（來源不可變）
+   - wiki/log.md、CHANGELOG.md 兩邊聯集（已設 merge=union，通常自動解決）
+   - wiki/index.md 重新整併，涵蓋兩邊所有頁面
+   - 框架檔（CLAUDE.md、AGENTS.md、opencode.json、scripts/、docs/）以更新版
+     為準；但若我本地改過這些檔案，先列出差異讓我裁決，不要直接蓋掉
+   - 我本地建立的 wiki/pages/、rtl/<project>/、sources/archive/<project>/
+     內容全部保留，這些更新版本來就沒有，不會被拿來比對
+
+5. 合併完成後：
+   - python3 scripts/wiki_search.py index 重建搜尋索引
+   - python3 scripts/trace_check.py check 跑追溯健檢，有缺口列出來
+   - git add -A && git commit（訊息：update: 框架更新至 YYYYMMDD）
+
+6. 讀 CHANGELOG.md 裡這次合併新增的條目（不是整份重讀），摘要這次升級
+   新增/變更了哪些規則與操作給我確認。
+
+帶入的 ~/transfer/ 資料夾等我確認合併沒問題後才刪。
+```
+
+**為什麼合併通常不會衝突**：工作站本地做的任何真實專案工作（Reverse-Ingest
+匯入的內容、Design-Revise 產生的新設計頁、自己 ingest 的來源）連網機的 repo
+完全不知道、也**不會**知道——這是 §6 講的單向資料流鐵律，工作站的真實專案
+資料永遠不回流。這些檔案在「帶入的新版」那邊根本不存在，git 合併時不會拿來
+比對，自然不會衝突。唯一可能撞在一起的是使用者**手改過的框架檔**（例如調過
+`opencode.json` 的 model 名稱）恰好這次升級也動了同一個檔案——範本裡的步驟 4
+已經涵蓋這個情況。
+
+**沒有 `.git` 的情況**（例如當初用 ZIP 下載解壓、不是 `git clone`）：這是一次性
+遷移而非合併——`git clone` 帶入的資料夾成一個有完整歷史的新 repo，把工作站既有
+的 `sources/`、`wiki/pages/` 內容搬進去，AI 應該先列清單問你「這些是你自己加的、
+還是框架原有的」，不確定就問、不要猜。
+
+**次要方法：git bundle**（repo 變得很大、想要單一壓縮檔案走 USB 時用）：
+
+```bash
+# 連網機
 git bundle create llm-wiki-$(date +%Y%m%d).bundle --all
-# 把 .bundle 複製到 USB
+
+# 工作站
+git bundle verify /path/to/usb/llm-wiki-YYYYMMDD.bundle   # 先驗證再用
 ```
 
-**工作站**（在 repo 目錄，先驗證再交給 AI）：
+驗證通過後，`git fetch` 的來源換成 bundle 檔案路徑即可，其餘步驟（打檢查點、
+merge、衝突處理、驗證、讀 CHANGELOG）跟上面完全相同。
 
-```bash
-git bundle verify /path/to/usb/llm-wiki-YYYYMMDD.bundle   # 確認 bundle 完整
-```
-
-然後對工作站的 agent（OpenCode）下指令，範本：
-
-> USB 上有框架更新：`/path/to/usb/llm-wiki-YYYYMMDD.bundle`。請：
-> 1. `git fetch <bundle路徑> <分支名>` 然後 merge FETCH_HEAD 進目前分支。
-> 2. 衝突處理原則：`sources/` 一律保留本地（鐵律：不可變）；`wiki/log.md` 兩邊聯集（append-only，已設 merge=union）；`wiki/index.md` 重新整併成涵蓋兩邊頁面的目錄；框架檔（CLAUDE.md、scripts/、docs/）以更新版為準，但若我本地改過要先列出差異給我裁決。
-> 3. merge 完成後執行 `python3 scripts/wiki_search.py index` 重建索引；若有 `scripts/trace_check.py` 則跑 `check`。
-> 4. 讀一遍新版 CLAUDE.md，摘要有哪些新規則/新操作給我。
-
-**更新的邊界**：bundle 只該帶框架與（初次）範例；工作站本地產生的 wiki 內容、RTL 專案永遠不會被更新覆蓋——它們只存在工作站的 commit 裡。反向（工作站 → 連網機）如需備份，同樣用 `git bundle create` 從工作站打包帶出。
+**升級內容參考**：`CHANGELOG.md` 記錄框架/規則層本身的演化（跟記錄 wiki *內容*
+操作的 `wiki/log.md` 不同層級），每次合併後讀新增的條目，就知道這次升級帶來
+什麼，不用臨時去 diff `CLAUDE.md` 猜。
 
 ## 5. 失效模式與對策（承襲 gist 社群經驗）
 

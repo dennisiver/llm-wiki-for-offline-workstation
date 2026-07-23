@@ -47,8 +47,9 @@ llm-wiki-for-offline-workstation/
 │   ├── pdf_to_md.py       # PDF 轉 Markdown 備援（PyMuPDF，可離線安裝）
 │   ├── trace_check.py     # Spec-to-RTL 追溯健檢與追溯矩陣產生
 │   └── verilog_map.py     # 既有 Verilog design 的模組階層解析／版本 diff（Reverse-Ingest 用）
+├── CHANGELOG.md           # 框架/規則層的演化記錄（升級時看這裡新增了什麼）
 └── docs/
-    ├── ARCHITECTURE.md    # 離線工作站的完整架構設計
+    ├── ARCHITECTURE.md    # 離線工作站的完整架構設計（升級程序見 §4.1）
     ├── SPEC-TO-RTL-FLOW.md# spec → 需求頁 → 設計頁 → RTL 的硬體設計流程
     └── intro.html         # 圖解版總覽（自包含單檔，瀏覽器直接開）
 ```
