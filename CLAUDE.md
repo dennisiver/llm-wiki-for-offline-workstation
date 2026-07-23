@@ -286,3 +286,4 @@ deviates: []      # RTL 行為與某 REQ 相抵觸且經使用者裁決後才記
 - **inbox 裡的 PDF**：本機預設沒有 PDF 轉文字工具。先試 `python3 scripts/pdf_to_md.py <檔案>`（需要 PyMuPDF，未安裝時腳本會印出離線安裝指引）；轉出 .md 後 ingest 該 .md，原 PDF 一併移入 archive。轉不了（未安裝依賴或是掃描檔）就把該 PDF 列入「資料缺口」請使用者在連網機轉檔，**絕不憑檔名猜測內容**。
 - 搜尋一律用本地工具：`scripts/wiki_search.py`、ripgrep、直接讀檔。
 - 修改 `wiki/pages/` 後，提醒使用者（或直接執行）`python3 scripts/wiki_search.py index` 重建搜尋索引。
+- **不假設本機工具存在，動用前先確認**：`scripts/*.py`（`wiki_search.py`／`trace_check.py`／`verilog_map.py`／`pdf_to_md.py`）都需要 Python 3，`pdf_to_md.py` 額外需要 PyMuPDF——不同工作站不一定都裝好，用之前先確認（例如 `command -v python3`、`python3 -c "import fitz"`），不要假設文件寫過就一定在。缺少時**不擅自安裝任何東西**（含離線 wheel 的 `pip install`）——這是使用者的決定，不是 AI 自主行為；改用本機已確定存在的工具（`grep`/`diff`/直接讀檔）盡量完成任務，做不到的部分照鐵律列入「資料缺口」誠實回報給使用者，不要假裝完成或想辦法繞過去。

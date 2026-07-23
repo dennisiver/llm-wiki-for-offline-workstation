@@ -273,8 +273,8 @@ merge、衝突處理、驗證、讀 CHANGELOG）跟上面完全相同。
 
 - [ ] 下載 LLM runtime 安裝檔 + 模型檔（GGUF），USB 搬入離線機
 - [ ] 下載 agent CLI 與（可選）Obsidian 安裝檔
-- [ ] 確認離線機有 Python 3.8+（`wiki_search.py` 只用標準函式庫）與 git
-- [ ] （可選）`pip download pymupdf -d pymupdf-wheels/` 帶入離線機備用，作為離線 PDF 轉文字的備援（§3.4）；主要流程仍是在連網機轉好 .md
+- [ ] **盤點離線機實際有什麼工具，不要假設一定裝得上**：`python3 --version`、`git --version` 是否存在？本 repo 的 `scripts/*.py`（`wiki_search.py`／`trace_check.py`／`verilog_map.py`／`pdf_to_md.py`）全部需要 Python 3 才能跑。若這台工作站的政策不允許安裝任何直譯器/套件（含離線 wheel），如實記錄哪些工具用不了——日常操作時 AI 會改用本機已有的工具（grep/diff/直接讀檔）盡量完成，其餘列入資料缺口，不會假裝這些腳本可以跑。
+- [ ] （可選，僅當 python3 + pip 確認可用時）`pip download pymupdf -d pymupdf-wheels/` 帶入離線機備用，作為離線 PDF 轉文字的備援（§3.4）；主要流程仍是在連網機轉好 .md
 
 日常循環（完全離線）：
 

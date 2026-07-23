@@ -57,3 +57,10 @@
   標明每個主張的來源性質，未核對過的地方不擅自判斷是否一致。
 - `trace_check.py` 擴充：`deviates` 欄位解析（不算孤兒需求）、「跨域模組」
   資訊性清單，兩者皆不影響 exit code。
+- 正式文件化「整包資料夾複製」離線更新流程（`docs/ARCHITECTURE.md` §4.1，
+  取代原本只講 git bundle 的版本），含現成可複製貼上的 agent 合併指令範本。
+- 新增 `CHANGELOG.md`（本檔案）記錄框架/規則層本身的演化，`.gitattributes`
+  加 `merge=union` 比照 `wiki/log.md`。
+- 新增「不假設本機工具存在，動用前先確認」原則：`scripts/*.py` 都需要
+  Python 3，工作站不一定裝好；缺少時不擅自安裝任何東西，改用本機已有的
+  工具盡量完成，其餘列入資料缺口誠實回報。
